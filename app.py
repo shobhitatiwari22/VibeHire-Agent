@@ -147,35 +147,39 @@ st.subheader("💬 Adaptive Interview Questions")
 qs = generate_interview_questions(cand, curriculum)
 answers = {}
 
+# --- OPTIMIZED CHAT BLOCK WITH RERUN SAFEGARDS ---
 if "chat_history" not in st.session_state:
-    first_q = qs[0] if isinstance(qs, list) and len(qs) > 0 else "your general technical milestones"
+    # Handle list unpacking safely so we don't pass raw objects
+    first_focus = qs[0] if isinstance(qs, list) and len(qs) > 0 else str(qs)
     st.session_state.chat_history = [
-        {"role": "assistant", "content": f"Hello! Let's kick off your adaptive interview. Can you talk about your hands-on implementation details regarding: {first_q}?"}
+        {"role": "assistant", "content": f"Hello! Let's kick off your adaptive interview. Can you talk about your hands-on implementation details regarding: {first_focus}?"}
     ]
 
-# 1. Render active conversational chat history logs
+# 1. Render history logs statically (Safe from infinite reruns)
 for msg in st.session_state.chat_history:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
 
-# 2. Track chat interaction values via input field
-if user_reply := st.chat_input("Type your technical response here..."):
+# 2. Capture and isolate real-time chat input actions safely
+user_reply = st.chat_input("Type your technical response here...", key="interview_chat_input_field")
+
+if user_reply:
+    # Append user response to state history
     st.session_state.chat_history.append({"role": "user", "content": user_reply})
-    with st.chat_message("user"):
-        st.write(user_reply)
-        
-    # 3. Simulate an intelligent, contextual AI follow-up response loop
-    with st.chat_message("assistant"):
-        with st.spinner("Analyzing responses and mapping framework concepts..."):
-            follow_up = "Understood. Based on that implementation, how would you design a recovery plan if the pipeline crashes or encounters data drift in production?"
-            st.write(follow_up)
-            st.session_state.chat_history.append({"role": "assistant", "content": follow_up})
+    
+    # Pre-calculate AI response and append to state cleanly before triggering a localized update
+    follow_up = "Understood. Based on that implementation, how would you design a recovery plan if the pipeline crashes or encounters data drift in production?"
+    st.session_state.chat_history.append({"role": "assistant", "content": follow_up})
+    
+    # Force a clean single interface refresh to break the infinite loading state
+    st.rerun()
 
 # 4. Generate Performance Feedback action trigger using the dynamic chat logs
 st.divider()
 if st.button("Generate Performance Feedback", type="primary"):
     st.session_state.feedback_report = generate_feedback(cand, curriculum, {"logs": str(st.session_state.chat_history)})
 # ----------------------------------------------
+
 
 if "feedback_report" in st.session_state:
     report = st.session_state.feedback_report
