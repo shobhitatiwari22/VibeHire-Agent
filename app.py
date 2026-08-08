@@ -147,15 +147,35 @@ st.subheader("💬 Adaptive Interview Questions")
 qs = generate_interview_questions(cand, curriculum)
 answers = {}
 
-for i, q in enumerate(qs, 1):
-    st.markdown(f"**Q{i}:** {q}")
-    ans = st.text_area(f"Your Answer to Q{i}", key=f"ans_{i}", placeholder="Type technical logs or candidate tracking data values...")
-    answers[f"Q{i}"] = ans
+if "chat_history" not in st.session_state:
+    first_q = qs[0] if isinstance(qs, list) and len(qs) > 0 else "your general technical milestones"
+    st.session_state.chat_history = [
+        {"role": "assistant", "content": f"Hello! Let's kick off your adaptive interview. Can you talk about your hands-on implementation details regarding: {first_q}?"}
+    ]
 
-# Action state persistence handler setup using session parameters cleanly to avoid download drops
+# 1. Render active conversational chat history logs
+for msg in st.session_state.chat_history:
+    with st.chat_message(msg["role"]):
+        st.write(msg["content"])
+
+# 2. Track chat interaction values via input field
+if user_reply := st.chat_input("Type your technical response here..."):
+    st.session_state.chat_history.append({"role": "user", "content": user_reply})
+    with st.chat_message("user"):
+        st.write(user_reply)
+        
+    # 3. Simulate an intelligent, contextual AI follow-up response loop
+    with st.chat_message("assistant"):
+        with st.spinner("Analyzing responses and mapping framework concepts..."):
+            follow_up = "Understood. Based on that implementation, how would you design a recovery plan if the pipeline crashes or encounters data drift in production?"
+            st.write(follow_up)
+            st.session_state.chat_history.append({"role": "assistant", "content": follow_up})
+
+# 4. Generate Performance Feedback action trigger using the dynamic chat logs
 st.divider()
 if st.button("Generate Performance Feedback", type="primary"):
-    st.session_state.feedback_report = generate_feedback(cand, curriculum, answers)
+    st.session_state.feedback_report = generate_feedback(cand, curriculum, {"logs": str(st.session_state.chat_history)})
+# ----------------------------------------------
 
 if "feedback_report" in st.session_state:
     report = st.session_state.feedback_report
